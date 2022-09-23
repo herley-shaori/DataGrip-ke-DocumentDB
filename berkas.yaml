@@ -1,0 +1,59 @@
+Resources:
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SecurityGroup untuk Bastion.
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 22
+        IpProtocol: tcp
+        ToPort: 22
+  Bastion:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0f62d9254ca98e1aa
+      InstanceType: t2.nano
+      KeyName: demoKeyPair
+      SecurityGroups:
+        - !Ref BastionSecurityGroup
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash -xe
+            touch /home/ec2-user/logcontoh.txt
+            echo [mongodb-org-6.0] > /home/ec2-user/logcontoh.txt
+            echo name=MongoDB Repository >> /home/ec2-user/logcontoh.txt
+            echo baseurl=https://repo.mongodb.org/yum/amazon/2/mongodb-org/6.0/x86_64/ >> /home/ec2-user/logcontoh.txt
+            echo gpgcheck=1 >> /home/ec2-user/logcontoh.txt
+            echo enabled=1 >> /home/ec2-user/logcontoh.txt
+            echo gpgkey=https://www.mongodb.org/static/pgp/server-6.0.asc >> /home/ec2-user/logcontoh.txt
+            sudo cp /home/ec2-user/logcontoh.txt /etc/yum.repos.d/mongodb-org-6.0.repo
+            sudo yum install -y mongodb-org
+            sudo yum install -y mongodb-org-6.0.1 mongodb-org-database-6.0.1 mongodb-org-server-6.0.1 mongodb-mongosh-6.0.1 mongodb-org-mongos-6.0.1 mongodb-org-tools-6.0.1
+            exclude=mongodb-org,mongodb-org-database,mongodb-org-server,mongodb-mongosh,mongodb-org-mongos,mongodb-org-tools
+            sudo systemctl start mongod
+            sudo systemctl status mongod
+            sudo systemctl enable mongod
+            mongosh
+  DocumentDBCluster:
+    Type: AWS::DocDB::DBCluster
+    Properties:
+      DeletionProtection: false
+      MasterUsername: herley
+      MasterUserPassword: rahasiabersamakitasemua
+      DBClusterParameterGroupName: !Ref DisableDocumentDBTLS
+  DisableDocumentDBTLS:
+    Type: AWS::DocDB::DBClusterParameterGroup
+    Properties: 
+      Description: "Menonaktifkan TLS."
+      Family: docdb4.0
+      Name: sourcerebound
+      Parameters:
+        tls: disabled
+  DocumentDBInstance:
+    Type: "AWS::DocDB::DBInstance"
+    Properties:
+      AutoMinorVersionUpgrade: true
+      DBClusterIdentifier: !Ref DocumentDBCluster
+      DBInstanceClass: "db.r6g.large"
+      DBInstanceIdentifier: "sample-cluster-instance-0"
